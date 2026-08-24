@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { 
   Building, Megaphone, Compass, Landmark, PhoneCall, Send, Lock, 
   CheckCircle2, AlertTriangle, Clock, ShieldCheck, FileText, ChevronRight,
-  User, Mail, Phone, Wrench, Sparkles, AlertCircle, Info, Calendar, X, ZoomIn
+  User, Mail, Phone, Wrench, Sparkles, AlertCircle, Info, Calendar, X, ZoomIn,
+  Palette
 } from 'lucide-react';
 import { Announcement, FuturePlan, EmergencyContact, ReportedIssue, Unit, Expense, Language, Poll } from '../types';
 import { Vote, Check, ShieldAlert, Award, BarChart3, HelpCircle } from 'lucide-react';
@@ -47,6 +48,7 @@ export default function PublicPortal({
   onOpenAdminModal
 }: PublicPortalProps) {
   const [activeTab, setActiveTab] = useState<'announcements' | 'polls' | 'plans' | 'contacts' | 'report'>('announcements');
+
   const [lightboxImg, setLightboxImg] = useState<string | null>(null);
 
   // Voting Form State per Poll
@@ -172,27 +174,25 @@ export default function PublicPortal({
     : (finalBankBalance - finalReserveBalance);
 
   return (
-    <div className="min-h-screen bg-slate-50 font-sans text-slate-800 pb-20">
-      {/* Top Banner & Public Header */}
-      <header className="bg-slate-900 text-white border-b-4 border-amber-500 shadow-xl sticky top-0 z-40">
+    <div className="min-h-screen bg-slate-50 font-sans text-slate-900 pb-20">
+      {/* Clean Light Minimalist Header */}
+      <header className="bg-white text-slate-900 border-b border-slate-200 shadow-xs sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             
             {/* Building Identity */}
             <div className="flex items-center gap-3.5">
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-amber-500 to-yellow-400 p-0.5 shadow-lg shrink-0">
-                <div className="w-full h-full bg-slate-900 rounded-[10px] flex items-center justify-center">
-                  <Building className="w-6 h-6 text-amber-400" />
-                </div>
+              <div className="w-12 h-12 rounded-2xl bg-slate-900 text-white flex items-center justify-center shadow-xs shrink-0">
+                <Building className="w-6 h-6 text-white" />
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <span className="px-2 py-0.5 bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[10px] font-black uppercase tracking-wider rounded">
+                  <span className="px-2 py-0.5 bg-slate-100 text-slate-800 border border-slate-200 text-[10px] font-black uppercase tracking-wider rounded-md">
                     Јавен веб портал
                   </span>
-                  <span className="text-xs text-slate-400 font-medium">ул. „Вич“ бр. 28</span>
+                  <span className="text-xs text-slate-500 font-medium">ул. „Вич“ бр. 28</span>
                 </div>
-                <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight">
+                <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
                   Заедница на сопственици Вич 28 Скопје
                 </h1>
               </div>
@@ -201,19 +201,19 @@ export default function PublicPortal({
           </div>
 
           {/* Navigation Bar */}
-          <nav className="flex flex-col sm:flex-row sm:items-center gap-2 mt-5 sm:overflow-x-auto pb-1 scrollbar-none border-t border-slate-800 pt-4">
+          <nav className="flex flex-col sm:flex-row sm:items-center gap-2 mt-5 sm:overflow-x-auto pb-1 scrollbar-none border-t border-slate-100 pt-4">
             <button
               onClick={() => setActiveTab('announcements')}
-              className={`w-full sm:w-auto justify-center sm:justify-start px-4 py-2.5 sm:py-2 rounded-xl sm:rounded-lg text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 shrink-0 cursor-pointer ${
+              className={`w-full sm:w-auto justify-center sm:justify-start px-4 py-2.5 sm:py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 shrink-0 cursor-pointer ${
                 activeTab === 'announcements'
-                  ? 'bg-amber-500 text-slate-950 shadow-md font-extrabold ring-2 ring-amber-400/50'
-                  : 'text-slate-300 bg-slate-800/60 sm:bg-transparent hover:bg-slate-800 hover:text-white'
+                  ? 'bg-slate-900 text-white shadow-sm ring-2 ring-slate-900/10'
+                  : 'text-slate-600 bg-slate-100 sm:bg-transparent hover:bg-slate-100 hover:text-slate-900'
               }`}
             >
-              <Megaphone className="w-4 h-4 text-amber-400 sm:text-inherit" />
+              <Megaphone className="w-4 h-4" />
               <span>Соопштенија</span>
               {announcements.length > 0 && (
-                <span className="ml-1 px-2 py-0.5 bg-slate-950/40 text-amber-300 text-[10px] font-black rounded-full">
+                <span className="ml-1 px-2 py-0.5 bg-slate-200 text-slate-800 text-[10px] font-black rounded-full">
                   {announcements.length}
                 </span>
               )}
@@ -221,16 +221,16 @@ export default function PublicPortal({
 
             <button
               onClick={() => setActiveTab('polls')}
-              className={`w-full sm:w-auto justify-center sm:justify-start px-4 py-2.5 sm:py-2 rounded-xl sm:rounded-lg text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 shrink-0 cursor-pointer ${
+              className={`w-full sm:w-auto justify-center sm:justify-start px-4 py-2.5 sm:py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 shrink-0 cursor-pointer ${
                 activeTab === 'polls'
-                  ? 'bg-amber-500 text-slate-950 shadow-md font-extrabold ring-2 ring-amber-400/50'
-                  : 'text-slate-300 bg-slate-800/60 sm:bg-transparent hover:bg-slate-800 hover:text-white'
+                  ? 'bg-slate-900 text-white shadow-sm ring-2 ring-slate-900/10'
+                  : 'text-slate-600 bg-slate-100 sm:bg-transparent hover:bg-slate-100 hover:text-slate-900'
               }`}
             >
-              <Vote className="w-4 h-4 text-amber-400 sm:text-amber-300" />
+              <Vote className="w-4 h-4" />
               <span>Гласање и Анкети</span>
               {polls.filter(p => p.status === 'active').length > 0 && (
-                <span className="ml-1 px-2 py-0.5 bg-amber-400 text-slate-950 font-extrabold text-[10px] rounded-full animate-pulse">
+                <span className="ml-1 px-2 py-0.5 bg-amber-500 text-white font-extrabold text-[10px] rounded-full animate-pulse">
                   {polls.filter(p => p.status === 'active').length} Активни
                 </span>
               )}
@@ -238,34 +238,34 @@ export default function PublicPortal({
 
             <button
               onClick={() => setActiveTab('plans')}
-              className={`w-full sm:w-auto justify-center sm:justify-start px-4 py-2.5 sm:py-2 rounded-xl sm:rounded-lg text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 shrink-0 cursor-pointer ${
+              className={`w-full sm:w-auto justify-center sm:justify-start px-4 py-2.5 sm:py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 shrink-0 cursor-pointer ${
                 activeTab === 'plans'
-                  ? 'bg-amber-500 text-slate-950 shadow-md font-extrabold ring-2 ring-amber-400/50'
-                  : 'text-slate-300 bg-slate-800/60 sm:bg-transparent hover:bg-slate-800 hover:text-white'
+                  ? 'bg-slate-900 text-white shadow-sm ring-2 ring-slate-900/10'
+                  : 'text-slate-600 bg-slate-100 sm:bg-transparent hover:bg-slate-100 hover:text-slate-900'
               }`}
             >
-              <Compass className="w-4 h-4 text-amber-400 sm:text-inherit" />
+              <Compass className="w-4 h-4" />
               <span>Идни планови и проекти</span>
             </button>
 
             <button
               onClick={() => setActiveTab('contacts')}
-              className={`w-full sm:w-auto justify-center sm:justify-start px-4 py-2.5 sm:py-2 rounded-xl sm:rounded-lg text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 shrink-0 cursor-pointer ${
+              className={`w-full sm:w-auto justify-center sm:justify-start px-4 py-2.5 sm:py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 shrink-0 cursor-pointer ${
                 activeTab === 'contacts'
-                  ? 'bg-amber-500 text-slate-950 shadow-md font-extrabold ring-2 ring-amber-400/50'
-                  : 'text-slate-300 bg-slate-800/60 sm:bg-transparent hover:bg-slate-800 hover:text-white'
+                  ? 'bg-slate-900 text-white shadow-sm ring-2 ring-slate-900/10'
+                  : 'text-slate-600 bg-slate-100 sm:bg-transparent hover:bg-slate-100 hover:text-slate-900'
               }`}
             >
-              <PhoneCall className="w-4 h-4 text-amber-400 sm:text-inherit" />
+              <PhoneCall className="w-4 h-4" />
               <span>Итни контакти и куќен Ред</span>
             </button>
 
             <button
               onClick={() => setActiveTab('report')}
-              className={`w-full sm:w-auto justify-center sm:justify-start px-4 py-2.5 sm:py-2 rounded-xl sm:rounded-lg text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 shrink-0 cursor-pointer ${
+              className={`w-full sm:w-auto justify-center sm:justify-start px-4 py-2.5 sm:py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 shrink-0 cursor-pointer ${
                 activeTab === 'report'
-                  ? 'bg-rose-600 text-white shadow-md font-extrabold ring-2 ring-rose-400/50'
-                  : 'text-rose-300 bg-rose-950/40 sm:bg-transparent hover:bg-rose-950/70 hover:text-white border border-rose-800/50'
+                  ? 'bg-rose-600 text-white shadow-md font-extrabold ring-2 ring-rose-500/20'
+                  : 'text-rose-600 bg-rose-50 sm:bg-transparent hover:bg-rose-50 hover:text-rose-700 border border-rose-200'
               }`}
             >
               <Send className="w-4 h-4" />
@@ -280,8 +280,8 @@ export default function PublicPortal({
         
         {/* Quick Highlights Bar */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
-          <div className="bg-white border-2 border-slate-200 rounded-xl p-4 shadow-sm flex items-center gap-3">
-            <div className="p-3 bg-amber-100 text-amber-700 rounded-lg">
+          <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs flex items-center gap-3.5">
+            <div className="p-3 bg-slate-100 text-slate-800 rounded-xl">
               <Building className="w-6 h-6" />
             </div>
             <div>
@@ -290,8 +290,8 @@ export default function PublicPortal({
             </div>
           </div>
 
-          <div className="bg-white border-2 border-slate-200 rounded-xl p-4 shadow-sm flex items-center gap-3">
-            <div className="p-3 bg-rose-100 text-rose-700 rounded-lg">
+          <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs flex items-center gap-3.5">
+            <div className="p-3 bg-rose-50 text-rose-600 rounded-xl">
               <Megaphone className="w-6 h-6" />
             </div>
             <div>
@@ -1083,20 +1083,22 @@ export default function PublicPortal({
       </main>
 
       {/* Footer */}
-      <footer className="bg-slate-900 text-slate-400 py-8 border-t border-slate-800 mt-12 text-center text-xs">
+      <footer className="bg-white text-slate-500 py-8 border-t border-slate-200 mt-12 text-center text-xs">
         <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div>
-            <strong>Заедница на сопственици Вич 28 Скопје</strong>
-            <p className="text-slate-500 mt-0.5">Сите права се задржани © {new Date().getFullYear()}</p>
+            <strong className="text-slate-800">Заедница на сопственици Вич 28 Скопје</strong>
+            <p className="text-slate-400 mt-0.5">Официјален информативен портал © {new Date().getFullYear()}</p>
           </div>
 
-          <button
-            onClick={onOpenAdminModal}
-            className="text-amber-400 hover:text-amber-300 font-bold flex items-center gap-1.5 underline cursor-pointer"
-          >
-            <Lock className="w-3.5 h-3.5" />
-            <span>АДМИН Најава за Управител</span>
-          </button>
+          <div>
+            <button
+              onClick={onOpenAdminModal}
+              className="text-slate-600 hover:text-slate-900 font-bold flex items-center gap-1.5 underline cursor-pointer"
+            >
+              <Lock className="w-3.5 h-3.5" />
+              <span>АДМИН Најава за Управител</span>
+            </button>
+          </div>
         </div>
       </footer>
 
