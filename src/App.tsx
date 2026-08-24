@@ -545,6 +545,7 @@ export default function App() {
     if (loadedData.preJunePayments) setPreJunePayments(loadedData.preJunePayments);
     if (loadedData.records) setRecords(loadedData.records);
     if (loadedData.config) setConfig(loadedData.config);
+    if (loadedData.activeMonthId) setActiveMonthId(loadedData.activeMonthId);
     if (loadedData.lang) setLang(loadedData.lang);
     if (loadedData.tmobileRates) setTmobileRates(loadedData.tmobileRates);
     if (loadedData.tmobileDates) setTmobileDates(loadedData.tmobileDates);
@@ -553,6 +554,13 @@ export default function App() {
     if (loadedData.tmobilePaid) setTmobilePaid(loadedData.tmobilePaid);
     if (loadedData.tmobilePaidDates) setTmobilePaidDates(loadedData.tmobilePaidDates);
     if (loadedData.tmobileNotes) setTmobileNotes(loadedData.tmobileNotes);
+    if (loadedData.announcements) setAnnouncements(loadedData.announcements);
+    if (loadedData.futurePlans) setFuturePlans(loadedData.futurePlans);
+    if (loadedData.emergencyContacts) setEmergencyContacts(loadedData.emergencyContacts);
+    if (loadedData.reportedIssues) setReportedIssues(loadedData.reportedIssues);
+    if (loadedData.polls) setPolls(loadedData.polls);
+    if (loadedData.unitPins) setUnitPins(sanitizePinsMap(loadedData.unitPins));
+    if (loadedData.adminPin) setAdminPin(loadedData.adminPin);
   };
 
   // Upload custom local backup json
@@ -561,16 +569,26 @@ export default function App() {
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onload = (event) => {
+    reader.onload = async (event) => {
       try {
         const loadedData = JSON.parse(event.target?.result as string);
          const confirmMsg = lang === 'MK'
-          ? 'Потврда: Дали сте сигурни за увоз на овој бекап фајл сесија? Ова целосно вбришува тековна состојба.'
-          : 'Confirm: Are you sure you want to import this visual backup session? This fully replaces current active memory.';
+          ? 'Потврда: Дали сте сигурни за увоз на овој бекап фајл сесија? Ова целосно ја обновува состојбата на серверот и прелистувачот.'
+          : 'Confirm: Are you sure you want to import this visual backup session? This fully synchronizes state on server and local cache.';
         if (!window.confirm(confirmMsg)) return;
         
         applyLoadedData(loadedData);
-        showStatusMsg('success', lang === 'MK' ? 'Локалниот бекап е успешно вчитан!' : 'Personal local backup successfully restored!');
+
+        // Immediately push imported backup to the server storage
+        try {
+          await fetch('/api/data', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(loadedData)
+          });
+        } catch (e) { /* ignore */ }
+
+        showStatusMsg('success', lang === 'MK' ? 'Локалниот бекап е успешно вчитан и синхронизиран со серверот!' : 'Personal local backup successfully restored and saved to server!');
       } catch (err) {
         showStatusMsg('error', lang === 'MK' ? 'Невалиден или корумпиран JSON фајл.' : 'Invalid or corrupted JSON file schema.');
       }
@@ -585,10 +603,12 @@ export default function App() {
       units,
       expenses,
       openingBalances,
+      balanceOverrides,
       startingDebts,
       preJunePayments,
       records,
       config,
+      activeMonthId,
       lang,
       tmobileRates,
       tmobileDates,
@@ -597,9 +617,16 @@ export default function App() {
       tmobilePaid,
       tmobilePaidDates,
       tmobileNotes,
+      announcements,
+      futurePlans,
+      emergencyContacts,
+      reportedIssues,
+      polls,
+      unitPins,
+      adminPin,
       createdAt: new Date().toISOString()
     };
-    const filename = `houseman-complete-backup-${new Date().toISOString().split('T')[0]}.json`;
+    const filename = `data.json`;
     const jsonString = `data:text/json;charset=utf-8,${encodeURIComponent(JSON.stringify(backupData, null, 2))}`;
     const downloadAnchor = document.createElement('a');
     downloadAnchor.setAttribute('href', jsonString);
@@ -607,19 +634,20 @@ export default function App() {
     document.body.appendChild(downloadAnchor);
     downloadAnchor.click();
     downloadAnchor.remove();
-    showStatusMsg('success', lang === 'MK' ? 'Комплетен бекап е преземен на вашиот компјутер!' : 'Entire database archive download triggered successfully!');
+    showStatusMsg('success', lang === 'MK' ? 'Преземен е најновиот data.json фајл подготвен за зачувување во GitHub!' : 'Downloaded latest data.json ready for GitHub commit!');
   };
 
   const [dataLoaded, setDataLoaded] = useState(false);
 
-  // Load state from local server (HDD) if available, falling back to LocalStorage
+  // Load state from local server (HDD) if available, or auto-sync from LocalStorage to server if server is empty
   useEffect(() => {
     async function loadData() {
       try {
         const res = await fetch('/api/data');
         if (res.ok) {
           const data = await res.json();
-          if (data && Object.keys(data).length > 0) {
+          // If server data exists and has units, use server data
+          if (data && Object.keys(data).length > 0 && data.units && data.units.length > 0) {
             if (data.units) setUnits(data.units);
             if (data.expenses) setExpenses(data.expenses);
             if (data.openingBalances) setOpeningBalances(data.openingBalances);
@@ -656,7 +684,6 @@ export default function App() {
             if (data.polls) setPolls(data.polls);
             if (data.unitPins) setUnitPins(sanitizePinsMap(data.unitPins));
             if (data.adminPin) setAdminPin(data.adminPin);
-            // Notice: viewMode is intentionally NOT loaded from server so each device/user always opens the Public Portal
             setDataLoaded(true);
             return;
           }
@@ -664,6 +691,57 @@ export default function App() {
       } catch (err) {
         console.warn("Could not load from API, using LocalStorage fallback:", err);
       }
+
+      // If server was empty or unreachable, check if we have data in LocalStorage to push back to server!
+      try {
+        const savedUnits = localStorage.getItem('houseman_units');
+        if (savedUnits) {
+          const parsedUnits = JSON.parse(savedUnits);
+          if (Array.isArray(parsedUnits) && parsedUnits.length > 0) {
+            // Restore all keys from local storage
+            const localPayload: any = { units: parsedUnits };
+            const savedExpenses = localStorage.getItem('houseman_expenses');
+            if (savedExpenses) localPayload.expenses = JSON.parse(savedExpenses);
+            const savedRecords = localStorage.getItem('houseman_monthlyRecords');
+            if (savedRecords) localPayload.records = JSON.parse(savedRecords);
+            const savedDebts = localStorage.getItem('houseman_startingDebts');
+            if (savedDebts) localPayload.startingDebts = JSON.parse(savedDebts);
+            const savedPreJune = localStorage.getItem('houseman_preJunePayments');
+            if (savedPreJune) localPayload.preJunePayments = JSON.parse(savedPreJune);
+            const savedOpening = localStorage.getItem('houseman_openingBalances');
+            if (savedOpening) localPayload.openingBalances = JSON.parse(savedOpening);
+            const savedOverrides = localStorage.getItem('houseman_balanceOverrides');
+            if (savedOverrides) localPayload.balanceOverrides = JSON.parse(savedOverrides);
+            const savedAnnouncements = localStorage.getItem('houseman_announcements');
+            if (savedAnnouncements) localPayload.announcements = JSON.parse(savedAnnouncements);
+            const savedPlans = localStorage.getItem('houseman_futurePlans');
+            if (savedPlans) localPayload.futurePlans = JSON.parse(savedPlans);
+            const savedContacts = localStorage.getItem('houseman_emergencyContacts');
+            if (savedContacts) localPayload.emergencyContacts = JSON.parse(savedContacts);
+            const savedIssues = localStorage.getItem('houseman_reportedIssues');
+            if (savedIssues) localPayload.reportedIssues = JSON.parse(savedIssues);
+            const savedPolls = localStorage.getItem('houseman_polls');
+            if (savedPolls) localPayload.polls = JSON.parse(savedPolls);
+            const savedPins = localStorage.getItem('houseman_unitPins');
+            if (savedPins) localPayload.unitPins = JSON.parse(savedPins);
+            const savedAdminPin = localStorage.getItem('houseman_adminPin');
+            if (savedAdminPin) localPayload.adminPin = savedAdminPin;
+
+            // Apply to state
+            applyLoadedData(localPayload);
+
+            // Auto-persist immediately to the empty server!
+            fetch('/api/data', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(localPayload)
+            }).catch(() => {});
+          }
+        }
+      } catch (e) {
+        console.error("Error restoring from LocalStorage to server:", e);
+      }
+
       setDataLoaded(true);
     }
     loadData();
