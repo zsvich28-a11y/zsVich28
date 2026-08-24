@@ -228,7 +228,7 @@ export default function PublicPortal({
               }`}
             >
               <Vote className="w-4 h-4" />
-              <span>Гласање и Анкети</span>
+              <span>Електронско гласање за одлуки</span>
               {polls.filter(p => p.status === 'active').length > 0 && (
                 <span className="ml-1 px-2 py-0.5 bg-amber-500 text-white font-extrabold text-[10px] rounded-full animate-pulse">
                   {polls.filter(p => p.status === 'active').length} Активни
@@ -396,7 +396,7 @@ export default function PublicPortal({
                 </div>
                 <div>
                   <h2 className="text-2xl font-black text-slate-900 flex items-center gap-2">
-                    Дигитално гласање на сопствениците (Закон за домување)
+                    Електронско гласање за одлуки на заедницата на сопственици
                   </h2>
                 </div>
               </div>
@@ -526,7 +526,7 @@ export default function PublicPortal({
                             {isYesSuccess && <span>🎉 ОДЛУКАТА Е УСПЕШНО ДОНЕСЕНА!</span>}
                             {isNoSuccess && <span>❌ ОДЛУКАТА Е ОДБИЕНА</span>}
                             {!isYesSuccess && !isNoSuccess && !isActive && <span>❌ ОДЛУКАТА НЕ ПОСТИГНА ПОВЕЌЕ ОД 50%+1 м²</span>}
-                            {!isYesSuccess && !isNoSuccess && isActive && <span>⏳ ГЛАСАЊЕТО Е ВО ТЕК (Се чекаат 50%+1 м²)</span>}
+                            {!isYesSuccess && !isNoSuccess && isActive && <span>⏳ ГЛАСАЊЕТО Е ВО ТЕК</span>}
                           </div>
 
                           <div className="text-xs font-semibold mt-1 leading-relaxed opacity-90">
@@ -543,12 +543,10 @@ export default function PublicPortal({
                         <div className="flex flex-wrap items-center justify-between text-xs font-black text-slate-700 gap-2">
                           <span className="flex items-center gap-1.5">
                             <BarChart3 className="w-4 h-4 text-amber-600" />
-                            <span>Искористеност на гласачки м²: {totalVotedM2} m² / {totalBuildingM2} m² ({totalVotedM2Pct}%) од {totalVotes} станови</span>
+                            <span>Досегашни резултати од гласање: {totalVotedM2} m² / {totalBuildingM2} m² ({totalVotedM2Pct}%) од {totalVotes} станови</span>
                           </span>
 
-                          <span className="text-[11px] font-mono bg-white px-2.5 py-1 rounded-lg border border-slate-200">
-                            Законски праг: <strong>{majorityM2Needed} m²</strong> (&gt;50%+1 m²)
-                          </span>
+                          
                         </div>
 
                         {/* Visual Bar showing m2 voted */}
@@ -653,7 +651,7 @@ export default function PublicPortal({
                               <div className="pt-3 border-t border-slate-800 space-y-2">
                                 <div className="p-2 bg-amber-500/10 border border-amber-500/20 rounded-lg text-[10px] text-amber-300 font-bold flex items-center gap-1.5">
                                   <span>🔑</span>
-                                  <span>Секое ново гласање има свој уникатен 4-цифрен ПИН доставен во вашето поштенско сандаче.</span>
+                                  <span>За ова гласасе има уникатен 4-цифрен ПИН доставен во вашето поштенско сандаче.</span>
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-3">
@@ -960,14 +958,8 @@ export default function PublicPortal({
         {activeTab === 'report' && (
           <div className="max-w-3xl mx-auto">
             <div className="bg-white border-2 border-slate-200 rounded-3xl p-6 sm:p-8 shadow-md">
-              <div className="border-b pb-4 mb-6">
-                <div className="flex flex-wrap items-center gap-2 mb-2">
-                  <span className="px-3 py-1 bg-rose-100 text-rose-800 text-xs font-black uppercase tracking-wider rounded-md border border-rose-200 inline-flex items-center gap-1.5">
-                    <Send className="w-3.5 h-3.5 text-rose-600" />
-                    <span>Директна е-пошта кон: zsvich28@gmail.com</span>
-                  </span>
-                </div>
-                <h2 className="text-2xl font-black text-slate-900 flex items-center gap-2">
+              <div className="border-b border-slate-200 pb-4 mb-6">
+                <h2 className="text-2xl font-black text-slate-900 flex items-center gap-2.5">
                   <Wrench className="w-6 h-6 text-rose-600" />
                   Пријави проблем или дефект во зградата
                 </h2>
@@ -992,12 +984,12 @@ export default function PublicPortal({
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-black text-slate-700 uppercase tracking-wider mb-1.5">
-                      Број на стан / просторија *
+                      Број на стан *
                     </label>
                     <input
                       type="text"
                       required
-                      placeholder="напр. Стан 12 или Деловен простор 1"
+                      placeholder="напр. Стан 12"
                       value={apartmentNo}
                       onChange={(e) => setApartmentNo(e.target.value)}
                       className="w-full px-4 py-2.5 bg-slate-50 border-2 border-slate-200 rounded-xl font-bold text-slate-900 text-sm focus:border-amber-500 focus:bg-white outline-none transition-all"
@@ -1006,7 +998,7 @@ export default function PublicPortal({
 
                   <div>
                     <label className="block text-xs font-black text-slate-700 uppercase tracking-wider mb-1.5">
-                      Тип на Дефект / Категорија
+                      Тип на дефект
                     </label>
                     <select
                       value={issueType}
@@ -1026,7 +1018,7 @@ export default function PublicPortal({
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-black text-slate-700 uppercase tracking-wider mb-1.5">
-                      Име и презиме (Опционално)
+                      Име и презиме
                     </label>
                     <input
                       type="text"

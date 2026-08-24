@@ -96,12 +96,26 @@ async function startServer() {
     }
   });
 
-  // GET App Data from HDD
+  // GET App Data from HDD with resilience & backup fallback
   app.get("/api/data", async (req, res) => {
     try {
       await fs.access(DATA_FILE);
       const content = await fs.readFile(DATA_FILE, "utf-8");
-      res.json(JSON.parse(content));
+      try {
+        const parsed = JSON.parse(content);
+        return res.json(parsed);
+      } catch (parseError) {
+        console.warn("Primary data.json parse error, attempting backup fallback:", parseError);
+        const bakFile = `${DATA_FILE}.bak`;
+        try {
+          const bakContent = await fs.readFile(bakFile, "utf-8");
+          const bakParsed = JSON.parse(bakContent);
+          return res.json(bakParsed);
+        } catch (bakErr) {
+          console.error("Backup parse also failed, returning empty payload:", bakErr);
+          return res.json({});
+        }
+      }
     } catch (error: any) {
       if (error.code === "ENOENT") {
         // File does not exist yet, return empty object
@@ -113,14 +127,54 @@ async function startServer() {
     }
   });
 
-  // POST App Data to HDD (save data securely)
+  // POST App Data to HDD (atomic write via temp file + automatic backup)
+  let isSaving = false;
+  let nextSaveData: any = null;
+
+  async function processSaveQueue() {
+    if (isSaving) return;
+    if (!nextSaveData) return;
+
+    isSaving = true;
+    const dataToSave = nextSaveData;
+    nextSaveData = null;
+
+    const tempFile = `${DATA_FILE}.tmp.${Date.now()}`;
+    try {
+      const jsonString = JSON.stringify(dataToSave, null, 2);
+      await fs.writeFile(tempFile, jsonString, "utf-8");
+
+      // Maintain a safe backup of the previous good state
+      try {
+        await fs.copyFile(DATA_FILE, `${DATA_FILE}.bak`);
+      } catch (e) {
+        // DATA_FILE might not exist on initial start
+      }
+
+      // Atomic rename replaces DATA_FILE instantly without partial-read windows
+      await fs.rename(tempFile, DATA_FILE);
+    } catch (err) {
+      console.error("Error writing data file atomically:", err);
+      try {
+        await fs.unlink(tempFile);
+      } catch (e) {
+        // ignore
+      }
+    } finally {
+      isSaving = false;
+      if (nextSaveData) {
+        processSaveQueue();
+      }
+    }
+  }
+
   app.post("/api/data", async (req, res) => {
     try {
-      const data = req.body;
-      await fs.writeFile(DATA_FILE, JSON.stringify(data, null, 2), "utf-8");
+      nextSaveData = req.body;
+      processSaveQueue();
       res.json({ status: "success", savedAt: new Date().toISOString() });
     } catch (error) {
-      console.error("Error writing data file:", error);
+      console.error("Error queueing data file write:", error);
       res.status(500).json({ error: "Failed to write data to HDD" });
     }
   });

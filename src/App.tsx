@@ -813,7 +813,7 @@ export default function App() {
       } catch (err) {
         console.error("Could not persistence save to server:", err);
       }
-    }, 500);
+    }, 1200);
 
 
     return () => clearTimeout(timer);
