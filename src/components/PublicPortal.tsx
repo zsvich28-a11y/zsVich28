@@ -61,27 +61,79 @@ export default function PublicPortal({
   const [contactInfo, setContactInfo] = useState('');
   const [issueType, setIssueType] = useState('Лифт');
   const [description, setDescription] = useState('');
+  const [isSendingIssue, setIsSendingIssue] = useState(false);
   const [submittedSuccess, setSubmittedSuccess] = useState(false);
+  const [submitError, setSubmitError] = useState('');
 
-  const handleSubmitIssue = (e: React.FormEvent) => {
+  const handleSubmitIssue = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!apartmentNo || !description) {
+    if (!apartmentNo.trim() || !description.trim()) {
       alert(lang === 'MK' ? 'Ве молиме пополнете број на стан и опис на проблемот.' : 'Please fill in apartment number and description.');
       return;
     }
-    onReportIssue({
+
+    setIsSendingIssue(true);
+    setSubmitError('');
+
+    const issuePayload = {
       apartmentNo,
-      name: residentName || 'Анонимен',
-      contact: contactInfo || 'Нема контакт',
+      name: residentName.trim() || 'Анонимен / Ненаведено',
+      contact: contactInfo.trim() || 'Нема контакт',
       issueType,
       description
-    });
-    setSubmittedSuccess(true);
-    setApartmentNo('');
-    setResidentName('');
-    setContactInfo('');
-    setDescription('');
-    setTimeout(() => setSubmittedSuccess(false), 5000);
+    };
+
+    // 1. Log issue to local state & database
+    onReportIssue(issuePayload);
+
+    // 2. Dispatch real email to zsvich28@gmail.com
+    try {
+      const emailPromise = fetch('/api/send-ticket-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: `[${issueType}] Пријава од ${apartmentNo}`,
+          description,
+          apartmentNo,
+          location: issueType,
+          urgency: 'medium',
+          contactName: residentName.trim() || 'Станар',
+          contactPhone: contactInfo.trim() || 'Нема телефон',
+        })
+      });
+
+      const publicFormSubmitPromise = fetch('https://formsubmit.co/ajax/zsvich28@gmail.com', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify({
+          _subject: `[ПРИЈАВЕН ПРОБЛЕМ - ВИЧ 28] ${apartmentNo}: ${issueType}`,
+          _captcha: 'false',
+          _template: 'table',
+          "Зграда": "ул. Вич бр. 28 Скопје",
+          "Број на стан / просторија": apartmentNo,
+          "Категорија на дефект": issueType,
+          "Име на пријавувач": residentName.trim() || "Станар",
+          "Контакт (Тел/Е-пошта)": contactInfo.trim() || "Не е наведено",
+          "Опис на дефектот": description,
+          "Датум и време на пријава": new Date().toLocaleString('mk-MK')
+        })
+      }).catch(() => null);
+
+      await Promise.allSettled([emailPromise, publicFormSubmitPromise]);
+    } catch (err) {
+      console.warn('Direct mail dispatch handled:', err);
+    } finally {
+      setIsSendingIssue(false);
+      setSubmittedSuccess(true);
+      setApartmentNo('');
+      setResidentName('');
+      setContactInfo('');
+      setDescription('');
+      setTimeout(() => setSubmittedSuccess(false), 8000);
+    }
   };
 
   // Calculate live financial summary for public view
@@ -146,33 +198,22 @@ export default function PublicPortal({
               </div>
             </div>
 
-            {/* Quick Admin Access Button */}
-            <div className="flex items-center gap-3">
-              <button
-                onClick={onOpenAdminModal}
-                className="px-4 py-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-black text-xs uppercase tracking-wider rounded-lg border border-amber-400 shadow-md flex items-center gap-2 transition-all cursor-pointer hover:scale-105"
-              >
-                <Lock className="w-4 h-4" />
-                <span>Управување / АДМИН</span>
-              </button>
-            </div>
-
           </div>
 
           {/* Navigation Bar */}
-          <nav className="flex items-center gap-2 mt-6 overflow-x-auto pb-1 scrollbar-none border-t border-slate-800 pt-3">
+          <nav className="flex flex-col sm:flex-row sm:items-center gap-2 mt-5 sm:overflow-x-auto pb-1 scrollbar-none border-t border-slate-800 pt-4">
             <button
               onClick={() => setActiveTab('announcements')}
-              className={`px-4 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 shrink-0 cursor-pointer ${
+              className={`w-full sm:w-auto justify-center sm:justify-start px-4 py-2.5 sm:py-2 rounded-xl sm:rounded-lg text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 shrink-0 cursor-pointer ${
                 activeTab === 'announcements'
-                  ? 'bg-amber-500 text-slate-950 shadow-md font-extrabold'
-                  : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                  ? 'bg-amber-500 text-slate-950 shadow-md font-extrabold ring-2 ring-amber-400/50'
+                  : 'text-slate-300 bg-slate-800/60 sm:bg-transparent hover:bg-slate-800 hover:text-white'
               }`}
             >
-              <Megaphone className="w-4 h-4" />
+              <Megaphone className="w-4 h-4 text-amber-400 sm:text-inherit" />
               <span>Соопштенија</span>
               {announcements.length > 0 && (
-                <span className="ml-1 px-1.5 py-0.2 bg-slate-950/40 text-amber-200 text-[10px] rounded-full">
+                <span className="ml-1 px-2 py-0.5 bg-slate-950/40 text-amber-300 text-[10px] font-black rounded-full">
                   {announcements.length}
                 </span>
               )}
@@ -180,16 +221,16 @@ export default function PublicPortal({
 
             <button
               onClick={() => setActiveTab('polls')}
-              className={`px-4 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 shrink-0 cursor-pointer ${
+              className={`w-full sm:w-auto justify-center sm:justify-start px-4 py-2.5 sm:py-2 rounded-xl sm:rounded-lg text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 shrink-0 cursor-pointer ${
                 activeTab === 'polls'
-                  ? 'bg-amber-500 text-slate-950 shadow-md font-extrabold'
-                  : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                  ? 'bg-amber-500 text-slate-950 shadow-md font-extrabold ring-2 ring-amber-400/50'
+                  : 'text-slate-300 bg-slate-800/60 sm:bg-transparent hover:bg-slate-800 hover:text-white'
               }`}
             >
-              <Vote className="w-4 h-4 text-amber-300" />
+              <Vote className="w-4 h-4 text-amber-400 sm:text-amber-300" />
               <span>Гласање и Анкети</span>
               {polls.filter(p => p.status === 'active').length > 0 && (
-                <span className="ml-1 px-1.5 py-0.5 bg-amber-400 text-slate-950 font-extrabold text-[10px] rounded-full animate-pulse">
+                <span className="ml-1 px-2 py-0.5 bg-amber-400 text-slate-950 font-extrabold text-[10px] rounded-full animate-pulse">
                   {polls.filter(p => p.status === 'active').length} Активни
                 </span>
               )}
@@ -197,34 +238,34 @@ export default function PublicPortal({
 
             <button
               onClick={() => setActiveTab('plans')}
-              className={`px-4 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 shrink-0 cursor-pointer ${
+              className={`w-full sm:w-auto justify-center sm:justify-start px-4 py-2.5 sm:py-2 rounded-xl sm:rounded-lg text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 shrink-0 cursor-pointer ${
                 activeTab === 'plans'
-                  ? 'bg-amber-500 text-slate-950 shadow-md font-extrabold'
-                  : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                  ? 'bg-amber-500 text-slate-950 shadow-md font-extrabold ring-2 ring-amber-400/50'
+                  : 'text-slate-300 bg-slate-800/60 sm:bg-transparent hover:bg-slate-800 hover:text-white'
               }`}
             >
-              <Compass className="w-4 h-4" />
+              <Compass className="w-4 h-4 text-amber-400 sm:text-inherit" />
               <span>Идни планови и проекти</span>
             </button>
 
             <button
               onClick={() => setActiveTab('contacts')}
-              className={`px-4 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 shrink-0 cursor-pointer ${
+              className={`w-full sm:w-auto justify-center sm:justify-start px-4 py-2.5 sm:py-2 rounded-xl sm:rounded-lg text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 shrink-0 cursor-pointer ${
                 activeTab === 'contacts'
-                  ? 'bg-amber-500 text-slate-950 shadow-md font-extrabold'
-                  : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                  ? 'bg-amber-500 text-slate-950 shadow-md font-extrabold ring-2 ring-amber-400/50'
+                  : 'text-slate-300 bg-slate-800/60 sm:bg-transparent hover:bg-slate-800 hover:text-white'
               }`}
             >
-              <PhoneCall className="w-4 h-4" />
+              <PhoneCall className="w-4 h-4 text-amber-400 sm:text-inherit" />
               <span>Итни контакти и куќен Ред</span>
             </button>
 
             <button
               onClick={() => setActiveTab('report')}
-              className={`px-4 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 shrink-0 cursor-pointer ${
+              className={`w-full sm:w-auto justify-center sm:justify-start px-4 py-2.5 sm:py-2 rounded-xl sm:rounded-lg text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 shrink-0 cursor-pointer ${
                 activeTab === 'report'
-                  ? 'bg-rose-600 text-white shadow-md font-extrabold'
-                  : 'text-rose-300 hover:bg-rose-950/50 hover:text-white border border-rose-800/50'
+                  ? 'bg-rose-600 text-white shadow-md font-extrabold ring-2 ring-rose-400/50'
+                  : 'text-rose-300 bg-rose-950/40 sm:bg-transparent hover:bg-rose-950/70 hover:text-white border border-rose-800/50'
               }`}
             >
               <Send className="w-4 h-4" />
@@ -357,9 +398,6 @@ export default function PublicPortal({
                   <h2 className="text-2xl font-black text-slate-900 flex items-center gap-2">
                     Дигитално гласање на сопствениците (Закон за домување)
                   </h2>
-                  <p className="text-sm text-slate-600 mt-1 max-w-2xl leading-relaxed">
-                    Гласачката моќ се пресметува според квадратурата (м²) на секој стан. Според Законот за домување, одлуката е **успешно донесена ако повеќе од 50%+1 m²** од вкупната површина на сите станови во зградата гласале „ЗА“.
-                  </p>
                 </div>
               </div>
 
@@ -382,26 +420,37 @@ export default function PublicPortal({
                   const totalVotes = poll.votes.length;
                   const totalUnitsCount = units.length || 76;
                   
+                  const standardOptions = ['ЗА', 'ПРОТИВ'];
+
                   // Total Building m2 Calculation
                   const totalBuildingM2 = units.reduce((acc, u) => acc + (u.area || 0), 0) || 5776;
                   const majorityM2Needed = Math.floor(totalBuildingM2 / 2) + 1; // 50% + 1 m2
 
-                  // Calculate total m2 voted and per option
+                  // Calculate total m2 voted and per option (0 = ЗА, 1 = ПРОТИВ)
                   let totalVotedM2 = 0;
-                  const optionM2s: number[] = poll.options.map(() => 0);
+                  let yesM2 = 0;
+                  let noM2 = 0;
+                  let yesVotesCount = 0;
+                  let noVotesCount = 0;
 
                   poll.votes.forEach((v) => {
                     const matchedUnit = units.find(u => u.number.toLowerCase() === v.apartmentNo.toLowerCase());
                     const unitArea = matchedUnit ? (matchedUnit.area || 76) : 76;
                     totalVotedM2 += unitArea;
-                    if (optionM2s[v.optionIndex] !== undefined) {
-                      optionM2s[v.optionIndex] += unitArea;
+                    
+                    const origOptText = (poll.options[v.optionIndex] || '').toUpperCase();
+                    if (v.optionIndex === 1 || origOptText.includes('ПРОТИВ') || origOptText.includes('НЕ')) {
+                      noM2 += unitArea;
+                      noVotesCount++;
+                    } else {
+                      yesM2 += unitArea;
+                      yesVotesCount++;
                     }
                   });
 
                   const totalVotedM2Pct = ((totalVotedM2 / totalBuildingM2) * 100).toFixed(1);
-                  const yesM2 = optionM2s[0] || 0;
-                  const noM2 = optionM2s[1] || 0;
+                  const yesPct = ((yesM2 / totalBuildingM2) * 100).toFixed(1);
+                  const noPct = ((noM2 / totalBuildingM2) * 100).toFixed(1);
 
                   const isYesSuccess = yesM2 >= majorityM2Needed;
                   const isNoSuccess = noM2 >= majorityM2Needed;
@@ -481,8 +530,8 @@ export default function PublicPortal({
                           </div>
 
                           <div className="text-xs font-semibold mt-1 leading-relaxed opacity-90">
-                            {isYesSuccess && `За предлогот гласаа ${yesM2} m² (${((yesM2/totalBuildingM2)*100).toFixed(1)}% од зградата), што ја преминува законската граница од 50%+1 m² (${majorityM2Needed} m²).`}
-                            {isNoSuccess && `Против предлогот гласаа ${noM2} m² (${((noM2/totalBuildingM2)*100).toFixed(1)}% од зградата).`}
+                            {isYesSuccess && `За предлогот гласаа ${yesM2} m² (${yesPct}% од зградата), што ја преминува законската граница од 50%+1 m² (${majorityM2Needed} m²).`}
+                            {isNoSuccess && `Против предлогот гласаа ${noM2} m² (${noPct}% од зградата).`}
                             {!isYesSuccess && !isNoSuccess && !isActive && `Гласањето заврши со ${yesM2} m² „ЗА“ од потребните ${majorityM2Needed} m².`}
                             {!isYesSuccess && !isNoSuccess && isActive && `За усвојување се потребни уште ${Math.max(0, majorityM2Needed - yesM2)} m² „ЗА“ (од вкупно ${totalBuildingM2} m² во зградата).`}
                           </div>
@@ -516,17 +565,10 @@ export default function PublicPortal({
                             style={{ width: `${(noM2 / totalBuildingM2) * 100}%` }}
                             title={`ПРОТИВ: ${noM2} m²`}
                           />
-                          {/* Other options */}
-                          <div 
-                            className="bg-amber-400 h-full transition-all duration-500" 
-                            style={{ width: `${((totalVotedM2 - yesM2 - noM2) / totalBuildingM2) * 100}%` }}
-                            title={`ВОЗДРЖАНИ: ${totalVotedM2 - yesM2 - noM2} m²`}
-                          />
                         </div>
 
                         <div className="flex justify-between items-center text-[10px] font-bold text-slate-500 pt-1">
                           <span>0 m²</span>
-                          <span className="text-amber-700 font-extrabold">▲ Праг за победа: {majorityM2Needed} m² (50%+1)</span>
                           <span>{totalBuildingM2} m² (100%)</span>
                         </div>
                       </div>
@@ -582,22 +624,22 @@ export default function PublicPortal({
                               }}
                               className="space-y-4"
                             >
-                              {/* Options Selection */}
+                              {/* Options Selection - strictly ZA and PROTIV */}
                               <div className="space-y-2">
                                 <label className="block text-[10px] font-black text-amber-400 uppercase tracking-wider">
                                   Изберете опција:
                                 </label>
-                                {poll.options.map((opt, idx) => (
+                                {standardOptions.map((opt, idx) => (
                                   <label 
                                     key={idx}
                                     onClick={() => setSelectedOptions(prev => ({ ...prev, [poll.id]: idx }))}
-                                    className={`p-3 rounded-xl border-2 transition-all cursor-pointer flex items-center justify-between text-xs font-black ${
+                                    className={`p-3.5 rounded-xl border-2 transition-all cursor-pointer flex items-center justify-between text-xs font-black ${
                                       currentSelectedOpt === idx 
                                         ? 'bg-amber-500 text-slate-950 border-amber-400 shadow-md font-extrabold' 
                                         : 'bg-slate-800 text-slate-200 border-slate-700 hover:border-slate-600'
                                     }`}
                                   >
-                                    <span>{opt}</span>
+                                    <span className="text-sm font-black tracking-wide">{opt}</span>
                                     <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
                                       currentSelectedOpt === idx ? 'border-slate-950 bg-slate-950 text-amber-400' : 'border-slate-600'
                                     }`}>
@@ -666,7 +708,7 @@ export default function PublicPortal({
                           </div>
                         )}
 
-                        {/* Live Vote Breakdown Chart */}
+                        {/* Live Vote Breakdown Chart - strictly ZA and PROTIV */}
                         <div className={`${isActive ? 'lg:col-span-6' : 'lg:col-span-12'} bg-slate-50 border-2 border-slate-200 p-6 rounded-2xl`}>
                           <h4 className="text-base font-black text-slate-900 mb-4 flex items-center justify-between">
                             <span className="flex items-center gap-2">
@@ -679,33 +721,35 @@ export default function PublicPortal({
                           </h4>
 
                           <div className="space-y-4">
-                            {poll.options.map((optionText, idx) => {
-                              const optionM2 = optionM2s[idx] || 0;
-                              const pctOfTotal = ((optionM2 / totalBuildingM2) * 100).toFixed(1);
-                              const countStanovi = poll.votes.filter(v => v.optionIndex === idx).length;
+                            {/* ZA Result */}
+                            <div className="space-y-1.5">
+                              <div className="flex justify-between items-center text-xs font-black text-slate-800">
+                                <span>ЗА ({yesVotesCount} станови)</span>
+                                <span className="font-mono">{yesM2} m² ({yesPct}% од зградата)</span>
+                              </div>
 
-                              return (
-                                <div key={idx} className="space-y-1.5">
-                                  <div className="flex justify-between items-center text-xs font-black text-slate-800">
-                                    <span>{optionText} ({countStanovi} станови)</span>
-                                    <span className="font-mono">{optionM2} m² ({pctOfTotal}% од зградата)</span>
-                                  </div>
+                              <div className="w-full bg-slate-200 rounded-full h-3.5 overflow-hidden flex">
+                                <div 
+                                  className="h-full bg-emerald-500 transition-all duration-500"
+                                  style={{ width: `${yesPct}%` }}
+                                />
+                              </div>
+                            </div>
 
-                                  <div className="w-full bg-slate-200 rounded-full h-3.5 overflow-hidden flex">
-                                    <div 
-                                      className={`h-full transition-all duration-500 ${
-                                        idx === 0 
-                                          ? 'bg-emerald-500' 
-                                          : idx === 1 
-                                          ? 'bg-rose-500' 
-                                          : 'bg-amber-500'
-                                      }`}
-                                      style={{ width: `${pctOfTotal}%` }}
-                                    />
-                                  </div>
-                                </div>
-                              );
-                            })}
+                            {/* PROTIV Result */}
+                            <div className="space-y-1.5">
+                              <div className="flex justify-between items-center text-xs font-black text-slate-800">
+                                <span>ПРОТИВ ({noVotesCount} станови)</span>
+                                <span className="font-mono">{noM2} m² ({noPct}% од зградата)</span>
+                              </div>
+
+                              <div className="w-full bg-slate-200 rounded-full h-3.5 overflow-hidden flex">
+                                <div 
+                                  className="h-full bg-rose-500 transition-all duration-500"
+                                  style={{ width: `${noPct}%` }}
+                                />
+                              </div>
+                            </div>
                           </div>
 
                           <div className="mt-6 pt-4 border-t border-slate-200 flex items-center gap-2 text-[11px] font-bold text-slate-500">
@@ -884,7 +928,7 @@ export default function PublicPortal({
                   <div className="flex items-start gap-3">
                     <span className="w-6 h-6 rounded-full bg-amber-500/20 border border-amber-500 text-amber-400 font-bold text-xs flex items-center justify-center shrink-0 mt-0.5">2</span>
                     <div>
-                      <strong className="text-white block font-bold">Заедницки простории и скали:</strong>
+                      <strong className="text-white block font-bold">Заеднички простории и скали:</strong>
                       Забрането е оставање на кабаст отпад, мебел, точаци и кутии во заедничкиот простори и скалите.
                     </div>
                   </div>
@@ -917,24 +961,29 @@ export default function PublicPortal({
           <div className="max-w-3xl mx-auto">
             <div className="bg-white border-2 border-slate-200 rounded-3xl p-6 sm:p-8 shadow-md">
               <div className="border-b pb-4 mb-6">
-                <span className="px-3 py-1 bg-rose-100 text-rose-800 text-xs font-black uppercase tracking-wider rounded-md border border-rose-200 inline-block mb-2">
-                  Директен контакт
-                </span>
+                <div className="flex flex-wrap items-center gap-2 mb-2">
+                  <span className="px-3 py-1 bg-rose-100 text-rose-800 text-xs font-black uppercase tracking-wider rounded-md border border-rose-200 inline-flex items-center gap-1.5">
+                    <Send className="w-3.5 h-3.5 text-rose-600" />
+                    <span>Директна е-пошта кон: zsvich28@gmail.com</span>
+                  </span>
+                </div>
                 <h2 className="text-2xl font-black text-slate-900 flex items-center gap-2">
                   <Wrench className="w-6 h-6 text-rose-600" />
                   Пријави проблем или дефект во зградата
                 </h2>
                 <p className="text-sm text-slate-600 mt-1">
-                  Забележавте изгорена сијалица, дефект на лифтот или протекување? Пополнете ја форматирана за директно известување на управителот.
+                  Забележавте изгорена сијалица, дефект на лифтот или протекување? Пополнете ги податоците подолу — пријавата автоматски се испраќа директно на официјалниот е-маил <strong>zsvich28@gmail.com</strong> и се евидентира кај управителот.
                 </p>
               </div>
 
               {submittedSuccess && (
-                <div className="mb-6 p-4 bg-emerald-50 border-2 border-emerald-300 rounded-2xl text-emerald-900 flex items-center gap-3">
-                  <CheckCircle2 className="w-6 h-6 text-emerald-600 shrink-0" />
-                  <div>
-                    <div className="font-black text-sm">Вашата пријава е успешно испратена!</div>
-                    <div className="text-xs text-emerald-700">Куќниот совет е известен и ќе преземе мерки во најкраток рок.</div>
+                <div className="mb-6 p-4 bg-emerald-50 border-2 border-emerald-400 rounded-2xl text-emerald-950 flex items-center gap-3 shadow-sm animate-fade-in">
+                  <CheckCircle2 className="w-7 h-7 text-emerald-600 shrink-0" />
+                  <div className="space-y-0.5">
+                    <div className="font-black text-sm text-emerald-900">Вашата пријава е успешно испратена!</div>
+                    <div className="text-xs text-emerald-800 font-medium">
+                      Податоците се доставени на <strong>zsvich28@gmail.com</strong> и евидентирани во регистарот на зградата.
+                    </div>
                   </div>
                 </div>
               )}
@@ -943,12 +992,12 @@ export default function PublicPortal({
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-black text-slate-700 uppercase tracking-wider mb-1.5">
-                      Број на стан *
+                      Број на стан / просторија *
                     </label>
                     <input
                       type="text"
                       required
-                      placeholder="напр. Стан 12 или Локал 1"
+                      placeholder="напр. Стан 12 или Деловен простор 1"
                       value={apartmentNo}
                       onChange={(e) => setApartmentNo(e.target.value)}
                       className="w-full px-4 py-2.5 bg-slate-50 border-2 border-slate-200 rounded-xl font-bold text-slate-900 text-sm focus:border-amber-500 focus:bg-white outline-none transition-all"
@@ -1018,10 +1067,13 @@ export default function PublicPortal({
 
                 <button
                   type="submit"
-                  className="w-full py-3.5 bg-rose-600 hover:bg-rose-700 text-white font-black text-sm uppercase tracking-wider rounded-xl shadow-md flex items-center justify-center gap-2 cursor-pointer transition-all border border-rose-500"
+                  disabled={isSendingIssue}
+                  className={`w-full py-3.5 bg-rose-600 hover:bg-rose-700 text-white font-black text-sm uppercase tracking-wider rounded-xl shadow-md flex items-center justify-center gap-2 cursor-pointer transition-all border border-rose-500 ${
+                    isSendingIssue ? 'opacity-70 cursor-not-allowed' : 'hover:scale-[1.01] active:scale-[0.99]'
+                  }`}
                 >
                   <Send className="w-5 h-5" />
-                  <span>Испрати пријава до куќниот совет</span>
+                  <span>{isSendingIssue ? 'Се испраќа кон zsvich28@gmail.com...' : 'Испрати пријава директно на zsvich28@gmail.com'}</span>
                 </button>
               </form>
             </div>

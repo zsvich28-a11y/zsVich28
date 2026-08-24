@@ -53,7 +53,7 @@ export default function PortalAdmin({
   const [pollTitle, setPollTitle] = useState('');
   const [pollDesc, setPollDesc] = useState('');
   const [pollCategory, setPollCategory] = useState<'capital' | 'maintenance' | 'rules' | 'general'>('capital');
-  const [pollOptions, setPollOptions] = useState<string[]>(['ЗА (Одобрувам)', 'ПРОТИВ (Не одобрувам)', 'ВОЗДРЖАН']);
+  const [pollOptions, setPollOptions] = useState<string[]>(['ЗА', 'ПРОТИВ']);
   const [pollEndDate, setPollEndDate] = useState('');
   const [pollQuorum, setPollQuorum] = useState(51);
 
@@ -763,19 +763,18 @@ export default function PortalAdmin({
                   </div>
 
                   {/* Summary results bar */}
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-slate-50 p-3 rounded-xl border border-slate-200 text-xs font-bold">
-                    {poll.options.map((opt, idx) => {
-                      const count = poll.votes.filter(v => v.optionIndex === idx).length;
-                      const m2 = optionM2s[idx] || 0;
-                      const pctTotal = ((m2 / totalBuildingM2) * 100).toFixed(1);
-                      return (
-                        <div key={idx} className="flex flex-col bg-white p-2.5 rounded-lg border border-slate-200">
-                          <span className="text-slate-700 truncate font-black">{opt}:</span>
-                          <span className="font-mono text-amber-800 font-extrabold text-sm mt-0.5">{m2} m² ({pctTotal}% од зградата)</span>
-                          <span className="text-[10px] text-slate-500 font-semibold">{count} станови</span>
-                        </div>
-                      );
-                    })}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-slate-50 p-3 rounded-xl border border-slate-200 text-xs font-bold">
+                    <div className="flex flex-col bg-white p-2.5 rounded-lg border border-emerald-200">
+                      <span className="text-emerald-700 font-black">ЗА:</span>
+                      <span className="font-mono text-emerald-800 font-extrabold text-sm mt-0.5">{yesM2} m² ({((yesM2/totalBuildingM2)*100).toFixed(1)}% од зградата)</span>
+                      <span className="text-[10px] text-slate-500 font-semibold">{poll.votes.filter(v => v.optionIndex === 0).length} станови</span>
+                    </div>
+
+                    <div className="flex flex-col bg-white p-2.5 rounded-lg border border-rose-200">
+                      <span className="text-rose-700 font-black">ПРОТИВ:</span>
+                      <span className="font-mono text-rose-800 font-extrabold text-sm mt-0.5">{noM2} m² ({((noM2/totalBuildingM2)*100).toFixed(1)}% од зградата)</span>
+                      <span className="text-[10px] text-slate-500 font-semibold">{poll.votes.filter(v => v.optionIndex === 1).length} станови</span>
+                    </div>
                   </div>
 
                   {/* Dedicated PINs for this decision */}
@@ -859,7 +858,12 @@ export default function PortalAdmin({
                       </summary>
                       <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5 max-h-60 overflow-y-auto p-1">
                         {poll.votes.map((vote, vIdx) => {
-                          const optText = poll.options[vote.optionIndex] || 'Опција';
+                          let optText = poll.options[vote.optionIndex] || 'ЗА';
+                          if (optText.toUpperCase().includes('ПРОТИВ') || optText.toUpperCase().includes('НЕ')) {
+                            optText = 'ПРОТИВ';
+                          } else if (optText.toUpperCase().includes('ЗА')) {
+                            optText = 'ЗА';
+                          }
                           const pollPins = poll.pins || unitPins;
                           const unitObj = units.find(u => u.number.toLowerCase() === vote.apartmentNo.toLowerCase());
                           const unitArea = unitObj ? (unitObj.area || 76) : 76;
@@ -1325,24 +1329,6 @@ export default function PortalAdmin({
             {/* MODE 1: DELIVERY SLIPS FOR MAILBOXES */}
             {printMode === 'slips' && (
               <div>
-                <div className="p-4 bg-amber-50 border border-amber-200 rounded-2xl mb-6 text-xs text-amber-900 print:hidden flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm">
-                  <div className="space-y-0.5">
-                    <div className="font-black flex items-center gap-1.5 text-amber-950">
-                      <span>✂️</span>
-                      <span>Печатење: Точно 4 ливчиња по А4 страница (голем и максимално читлив формат)</span>
-                    </div>
-                    <p className="text-amber-800 text-[11px]">
-                      Исечете ги по испрекинатата линија и доставете ги во поштенските сандачиња на секој стан.
-                    </p>
-                  </div>
-                  {activePollForPins && (
-                    <span className="text-xs font-black bg-amber-200/90 text-amber-950 px-3 py-1.5 rounded-xl border border-amber-300 inline-flex items-center gap-1 self-start sm:self-auto">
-                      <span>🗳️</span>
-                      <span>Одлука: {activePollForPins.title}</span>
-                    </span>
-                  )}
-                </div>
-
                 <div className="space-y-6 print:space-y-0">
                   {(() => {
                     const currentPinsMap = (activePollForPins?.pins) || unitPins;
@@ -1555,15 +1541,9 @@ export default function PortalAdmin({
 
                   {/* Poll Info Box */}
                   <div className="p-4 bg-slate-50 border border-slate-300 rounded-2xl space-y-2 text-xs">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <span className="text-slate-500 uppercase font-black text-[10px]">Наслов на одлуката:</span>
-                        <p className="font-black text-sm text-slate-900">{poll.title}</p>
-                      </div>
-                      <div>
-                        <span className="text-slate-500 uppercase font-black text-[10px]">Категорија & Статус:</span>
-                        <p className="font-bold text-slate-800 uppercase">{poll.category} • {poll.status === 'active' ? '● Активно' : 'О Завршено'}</p>
-                      </div>
+                    <div>
+                      <span className="text-slate-500 uppercase font-black text-[10px]">Наслов на одлуката:</span>
+                      <p className="font-black text-sm text-slate-900">{poll.title}</p>
                     </div>
 
                     <div>
@@ -1641,7 +1621,12 @@ export default function PortalAdmin({
                             const matchedUnit = units.find(u => u.number.toLowerCase() === v.apartmentNo.toLowerCase());
                             const unitArea = matchedUnit ? (matchedUnit.area || 76) : 76;
                             const assignedPin = pollPins[v.apartmentNo] || pollPins[matchedUnit?.id || ''] || 'N/A';
-                            const optText = poll.options[v.optionIndex] || 'Опција';
+                            let optText = poll.options[v.optionIndex] || 'ЗА';
+                            if (optText.toUpperCase().includes('ПРОТИВ') || optText.toUpperCase().includes('НЕ')) {
+                              optText = 'ПРОТИВ';
+                            } else if (optText.toUpperCase().includes('ЗА')) {
+                              optText = 'ЗА';
+                            }
 
                             return (
                               <tr key={idx} className={idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'}>

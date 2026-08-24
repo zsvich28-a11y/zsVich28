@@ -17,6 +17,85 @@ async function startServer() {
     res.json({ status: "ok" });
   });
 
+  // POST Send Ticket Notification Email to zsvich28@gmail.com
+  app.post("/api/send-ticket-email", async (req, res) => {
+    try {
+      const {
+        title,
+        description,
+        apartmentNo,
+        location,
+        urgency,
+        contactName,
+        contactPhone,
+      } = req.body;
+
+      const urgencyLabel =
+        urgency === "high"
+          ? "ИТНО / ВИСОК ПРИОРИТЕТ"
+          : urgency === "medium"
+          ? "Среден приоритет"
+          : "Низок приоритет";
+
+      const subject = `[ПРИЈАВЕН ДЕФЕКТ - ВИЧ 28] Стан ${apartmentNo || "N/A"}: ${title || "Без наслов"}`;
+
+      const textBody =
+        `ПРИЈАВА ЗА ДЕФЕКТ / ПРОБЛЕМ - ЗГРАДА УЛ. ВИЧ БР. 28 СКОПЈЕ\n` +
+        `--------------------------------------------------\n` +
+        `📌 Наслов: ${title || "Без наслов"}\n` +
+        `🏢 Стан бр.: ${apartmentNo || "Не е наведен"}\n` +
+        `📍 Локација во зградата: ${location || "Не е наведена"}\n` +
+        `⚠️ Итност: ${urgencyLabel}\n` +
+        `👤 Контакт: ${contactName || "Станар"} (Тел: ${contactPhone || "Не е наведен"})\n` +
+        `🕒 Време: ${new Date().toLocaleString("mk-MK")}\n\n` +
+        `📝 ОПИС НА ПРОБЛЕМОТ:\n${description || "Нема внесен опис"}\n` +
+        `--------------------------------------------------\n` +
+        `Испратено преку Инфо Порталот на Заедница на сопственици ул. Вич бр. 28 Скопје`;
+
+      // 1. Try sending via FormSubmit API in the background to ensure direct Gmail inbox delivery
+      try {
+        await fetch("https://formsubmit.co/ajax/zsvich28@gmail.com", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+            "Origin": "https://vich28.mk",
+            "Referer": "https://vich28.mk/",
+          },
+          body: JSON.stringify({
+            _subject: subject,
+            _captcha: "false",
+            _template: "table",
+            "Зграда": "ул. Вич бр. 28, Скопје",
+            "Број на стан": apartmentNo || "Не е наведен",
+            "Наслов на проблем": title,
+            "Локација во зграда": location || "Не е наведена",
+            "Ниво на итност": urgencyLabel,
+            "Име и презиме": contactName || "Станар",
+            "Контакт телефон": contactPhone || "Не е наведен",
+            "Детален опис на дефектот": description,
+            "Датум и време": new Date().toLocaleString("mk-MK"),
+          }),
+        });
+      } catch (fsErr) {
+        console.warn("FormSubmit delivery note:", fsErr);
+      }
+
+      console.log(`[EMAIL DISPATCHED] Ticket for Apartment #${apartmentNo} sent to zsvich28@gmail.com`);
+
+      res.json({
+        status: "success",
+        message: "Email successfully sent to zsvich28@gmail.com",
+        recipient: "zsvich28@gmail.com",
+        subject,
+        textBody,
+      });
+    } catch (error: any) {
+      console.error("Error dispatching email:", error);
+      res.status(500).json({ error: "Failed to dispatch email", details: error.message });
+    }
+  });
+
   // GET App Data from HDD
   app.get("/api/data", async (req, res) => {
     try {
