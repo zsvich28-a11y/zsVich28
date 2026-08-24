@@ -1,0 +1,6 @@
+{
+  "name": "Vich 28",
+  "description": "Calculate monthly building utility invoices for apartments and stores with per-square-meter variable division and rolling payment reconciliation.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
